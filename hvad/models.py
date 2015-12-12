@@ -10,6 +10,7 @@ from django.db.models.manager import Manager
 from django.db.models.signals import post_save, class_prepared
 from django.utils.translation import get_language
 from hvad.descriptors import LanguageCodeAttribute, TranslatedAttribute
+from hvad.fields import SingleTranslationObject
 from hvad.manager import TranslationManager, TranslationsModelManager
 from hvad.utils import (get_cached_translation, set_cached_translation,
                         SmartGetFieldByName, SmartGetField, settings_updater)
@@ -487,5 +488,8 @@ def prepare_translatable_model(sender, **kwargs):
             SmartGetField(model._meta.get_field),
             model._meta
         )
+
+    if not model._meta.proxy:
+        model.add_to_class('hvad_virtual_translation', SingleTranslationObject(model))
 
 class_prepared.connect(prepare_translatable_model)

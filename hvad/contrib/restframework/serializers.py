@@ -18,10 +18,11 @@ class TranslationsMixin(object):
 
     # Add the translations accessor to default serializer fields
     def get_default_field_names(self, *args):
-        return (
-            super(TranslationsMixin, self).get_default_field_names(*args)
-            + [self.Meta.model._meta.translations_accessor]
-        )
+        names = super(TranslationsMixin, self).get_default_field_names(*args)
+        if 'hvad_virtual_translation' in names:
+            names.remove('hvad_virtual_translation')
+        names.append(self.Meta.model._meta.translations_accessor)
+        return names
 
     def build_field(self, field_name, info, model_class, nested_depth):
         # Special handling for translations field so it is nested and not relational
@@ -140,12 +141,12 @@ class TranslatableModelMixin(object):
 
     def get_default_field_names(self, *args):
         # Add translated fields into default field names
-        return (
-            super(TranslatableModelMixin, self).get_default_field_names(*args)
-            + list(field.name
-                   for field in self.Meta.model._meta.translations_model._meta.fields
-                   if field.serialize and not field.name in veto_fields)
-        )
+        names = super(TranslatableModelMixin, self).get_default_field_names(*args)
+        if 'hvad_virtual_translation' in names:
+            names.remove('hvad_virtual_translation')
+        names.extend(field.name for field in self.Meta.model._meta.translations_model._meta.fields
+                     if field.serialize and not field.name in veto_fields)
+        return names
 
     def get_uniqueness_extra_kwargs(self, field_names, declared_fields, *args):
         # Default implementation chokes on translated fields, filter them out
