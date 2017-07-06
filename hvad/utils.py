@@ -2,6 +2,7 @@ import django
 from django.db.models.fields import FieldDoesNotExist
 from django.utils.translation import get_language
 from hvad.exceptions import WrongManager
+from hvad.settings import hvad_settings
 
 __all__ = (
     'get_translation_aware_manager',
@@ -43,6 +44,15 @@ def combine(trans, klass):
     return combined
 
 
+def get_translation_index(transaction):
+    if transaction.language_code in hvad_settings.FALLBACK_LANGUAGES:
+        return hvad_settings.FALLBACK_LANGUAGES.index(
+            transaction.language_code
+        )
+    else:
+        return len(hvad_settings.FALLBACK_LANGUAGES)
+
+
 def get_translation(instance, language_code=None):
     ''' Get translation by language. Fresh copy is loaded from DB.
         Can leverage prefetched data, like in .prefetch_related('translations')
@@ -56,8 +66,15 @@ def get_translation(instance, language_code=None):
         for obj in qs:
             if obj.language_code == language_code:
                 return obj
-        raise accessor.model.DoesNotExist('%r is not translated in %r' % (instance, language_code))
-    return accessor.get(language_code=language_code)
+        return qs[0]
+    try:
+        return accessor.get(language_code=language_code)
+    except Exception:
+        if not qs:
+            raise accessor.model.DoesNotExist('%r is not translated in %r' % (instance, language_code))
+        ordered_qs = sorted(qs, key=get_translation_index)
+        return ordered_qs[0]
+
 
 def load_translation(instance, language, enforce=False):
     ''' Get or create a translation.
